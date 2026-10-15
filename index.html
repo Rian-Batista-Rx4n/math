@@ -1,1 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="shortcut icon" href="" type="image/x-icon">
+    <title>Math</title>
+</head>
+
+<body>
+    <div id="modal-novo-conjunto" class="modal-novo-conjunto">
+        <input class="novo-conjunto-input" type="text" placeholder="Nome do Conjunto">
+        <input class="novo-conjunto-input" type="text" placeholder="Elementos"><br>
+        <button class="modal-novo-conjunto-btn" onclick="createNewSet()">Criar Conjunto</button>
+    </div>
+    
+    <header>
+        <div>
+            <h1>Math</h1>
+        </div>
+    </header>
+
+    <main class="main">
+        <aside class="left-aside">
+            <div class="left-aside-btn" id="novo-conjunto-btn" title="Novo Conjunto" onclick="toggleModal()">A={}</div>
+        </aside>
+
+        <section class="main-section">
+            <div class="formula">
+                <input id="formula-input" class="formula-input" type="text" placeholder="Digite a fórmula Ex. A∪B">
+            </div>
+            <div class="result"></div>
+            <div class="keyboard">
+                <div class="keyboard-key" id="keyboard-key-0" onclick="insertSymbol('∪')">∪</div>
+                <div class="keyboard-key" id="keyboard-key-1" onclick="insertSymbol('∩')">∩</div>
+                <div class="keyboard-key" id="keyboard-key-2" onclick="insertSymbol('−')">−</div>
+                <div class="keyboard-key" id="keyboard-key-3" onclick="insertSymbol('⊆')">⊆</div>
+                <div class="keyboard-key" id="keyboard-key-4" onclick="insertSymbol('⊂')">⊂</div>
+                <div class="keyboard-key" id="keyboard-key-5" onclick="insertSymbol('∈')">∈</div>
+                <div class="keyboard-key" id="keyboard-key-6" onclick="insertSymbol('∉')">∉</div>
+                <div class="keyboard-key" id="keyboard-key-7" onclick="insertSymbol('∅')">∅</div>
+                <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('¬')">¬</div>
+                <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('^')">^</div>
+                <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('∨')">∨</div>
+                <div class="keyboard-key" id="keyboard-key-8" onclick="insertSymbol('=')">=</div>
+                <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('≠')">≠</div>
+            </div>
+        </section>
+
+        <aside class="right-aside" id="right-aside">
+
+        </aside>
+    </main>
+
+    <footer>
+        <p>Developer: Rx4n | Math: v0.0.1 | ©2026</p>
+    </footer>
+
+    <script src="/assets/js/script.js"></script>
+</body>
+</html>

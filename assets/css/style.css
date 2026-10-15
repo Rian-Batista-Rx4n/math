@@ -1,1 +1,167 @@
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    background: #080d18;
+    color: white;
+
+    display: flex;
+    flex-direction: column;
+
+    min-height: 100vh;
+}
+
+.modal-novo-conjunto {
+    display: none;
+    position: static;
+    margin: auto;
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    width: 512px;
+    height: 128px;
+    background: gray;
+    text-align: center;
+}
+
+.novo-conjunto-input {
+    width: 80%;
+    margin: 8px auto;
+    background: snow;
+    height: 32px;
+    text-align: center;
+}
+
+.modal-novo-conjunto-btn {
+    width: 80%;
+    margin: auto;
+    background: #60a5fa;
+    height: 32px;
+    cursor: pointer;
+}
+
+header {
+    text-align: center;
+    padding: 16px;
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    justify-content: start;
+}
+
+header h1 {
+    font-size: 35px;
+    color: #60a5fa;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.main-section {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    width: 100%;
+    background: snow;
+    color: black;
+}
+
+.result {
+    margin-top: 16px;
+    font-size: 24px;
+    height: 32px;
+    border: 1px solid black;
+    border-radius: 12px;
+    background: gray;
+}
+
+.keyboard {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px;
+    bottom: 0;
+}
+
+.keyboard-key {
+    width: 48px;
+    height: 48px;
+    background: #60a5fa;
+    border-radius: 12px;
+    border: 1px solid black;
+    color: black;
+    text-align: center;
+    line-height: 48px;
+    margin: 4px;
+    cursor: pointer;
+}
+
+.left-aside {
+    left: 0;
+    width: 64px;
+    flex-shrink: 0;
+    background: #111827;
+    border-right: 1px solid #1e293b;
+    overflow-y: auto;
+    display: block;
+}
+
+.right-aside {
+    position: static;
+    right: 0;
+    width: 256px;
+    flex-shrink: 0;
+    background: #111827;
+    border-right: 1px solid #1e293b;
+    overflow-y: auto;
+}
+
+.left-aside div {
+    width: 48px;
+    height: 48px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid black;
+    color: black;
+    text-align: center;
+    line-height: 48px;
+    margin: auto;
+    margin-top: 8px;
+    cursor: pointer;
+}
+
+.right-aside div {
+    padding: 8px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid black;
+    color: black;
+    text-align: center;
+    margin: auto;
+    margin-top: 8px;
+    cursor: pointer;
+}
+
+.formula-input {
+    width: 100%;
+    height: 32px;
+}
+
+footer {
+    padding: 12px;
+    text-align: center;
+    border-top: 1px solid #1e293b;
+    font-size: 13px;
+    color: gray;
+}
