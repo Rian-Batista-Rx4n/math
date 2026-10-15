@@ -6,9 +6,6 @@ const conjuntoElementosDicionario = {
     CONSOANTE: ["b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z"]
 };
 
-let nomeConjuntos = Object.keys(conjuntoElementosDicionario);
-console.log(nomeConjuntos); // debug
-
 // adicionando os conjuntos padrões no aside direito
 const rightAside = document.getElementById("right-aside");
 
@@ -69,6 +66,9 @@ function createNewSet() {
     elementsInput.value = "";
 
     toggleModal();
+    let nomeConjuntos = Object.keys(conjuntoElementosDicionario);
+    console.log(nomeConjuntos); // debug NOMES
+    console.log(conjuntoElementosDicionario); // debug CONJUNTOS COMPLETOS
 }
 
 // Inserir simbolos no input de fórmulas
