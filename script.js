@@ -109,11 +109,11 @@ function formulaSolver() {
     if (!formula) return;
 
     try {
-        // Etapa 1: separar a fórmula em tokens.
+        // Etapa 1: transformar a fórmula em tokens.
         function tokenizar(expressao) {
             const tokens = [];
             const regex =
-                /\s*([A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?|∅|[()∪∩−⊆⊂∈∉=≠])/y;
+                /\s*([A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?|∅|[()∪∩−⊆⊂∈∉=≠¬∧∨])/y;
 
             let posicao = 0;
 
@@ -135,214 +135,246 @@ function formulaSolver() {
         }
 
         const tokens = tokenizar(formula);
+        let posicao = 0;
 
-        // Etapa 2: procurar um operador de comparação fora dos parênteses.
-        function separarComparacao(tokens) {
-            let profundidade = 0;
-            let comparacao = null;
+        const operadoresComparacao = ["⊆", "⊂", "∈", "∉", "=", "≠"];
+        const operadoresConjunto = ["∪", "∩", "−"];
 
-            const operadores = ["⊆", "⊂", "∈", "∉", "=", "≠"];
-
-            for (let i = 0; i < tokens.length; i++) {
-                if (tokens[i] === "(") profundidade++;
-                if (tokens[i] === ")") profundidade--;
-
-                if (profundidade < 0) {
-                    throw new Error("Parêntese de fechamento sem abertura.");
-                }
-
-                if (profundidade === 0 && operadores.includes(tokens[i])) {
-                    if (comparacao !== null) {
-                        throw new Error(
-                            "Use apenas uma comparação por fórmula nesta versão."
-                        );
-                    }
-
-                    comparacao = i;
-                }
+        function exigirBooleano(valor, operador) {
+            if (valor.tipo !== "booleano") {
+                throw new Error(
+                    `O operador "${operador}" precisa de uma proposição verdadeira ou falsa.`
+                );
             }
 
-            if (profundidade !== 0) {
-                throw new Error("Os parênteses não estão fechados corretamente.");
-            }
-
-            if (comparacao === null) {
-                return null;
-            }
-
-            const esquerda = tokens.slice(0, comparacao);
-            const operador = tokens[comparacao];
-            const direita = tokens.slice(comparacao + 1);
-
-            if (!esquerda.length || !direita.length) {
-                throw new Error("A comparação precisa ter os dois operandos.");
-            }
-
-            return { esquerda, operador, direita };
+            return valor.valor;
         }
 
-        // Etapa 3: analisar e calcular expressões de conjuntos.
-        function avaliarConjunto(tokens) {
-            let posicao = 0;
-
-            function lerPrimario() {
-                const token = tokens[posicao];
-
-                if (token === undefined) {
-                    throw new Error("Era esperado um conjunto.");
-                }
-
-                if (token === "∅") {
-                    posicao++;
-                    return [];
-                }
-
-                if (token === "(") {
-                    posicao++;
-
-                    const resultado = lerUniao();
-
-                    if (tokens[posicao] !== ")") {
-                        throw new Error("Está faltando um ')'.");
-                    }
-
-                    posicao++;
-                    return resultado;
-                }
-
-                if (/^[A-Za-z][A-Za-z0-9_]*$/.test(token)) {
-                    posicao++;
-
-                    const nome = token.toUpperCase();
-
-                    if (!Object.hasOwn(conjuntoElementosDicionario, nome)) {
-                        throw new Error(`O conjunto "${nome}" não existe.`);
-                    }
-
-                    return [...conjuntoElementosDicionario[nome]];
-                }
-
-                throw new Error(`Expressão inesperada: "${token}".`);
-            }
-
-            function lerIntersecao() {
-                let resultado = lerPrimario();
-
-                while (tokens[posicao] === "∩") {
-                    posicao++;
-
-                    const direita = lerPrimario();
-
-                    resultado = resultado.filter(
-                        elemento => direita.includes(elemento)
-                    );
-                }
-
-                return resultado;
-            }
-
-            function lerUniao() {
-                let resultado = lerIntersecao();
-
-                while (
-                    tokens[posicao] === "∪" ||
-                    tokens[posicao] === "−"
-                ) {
-                    const operador = tokens[posicao++];
-
-                    const direita = lerIntersecao();
-
-                    if (operador === "∪") {
-                        resultado = [...new Set([...resultado, ...direita])];
-                    } else {
-                        resultado = resultado.filter(
-                            elemento => !direita.includes(elemento)
-                        );
-                    }
-                }
-
-                return resultado;
-            }
-
-            const resultado = lerUniao();
-
-            if (posicao < tokens.length) {
+        function exigirConjunto(valor, operador) {
+            if (valor.tipo !== "conjunto") {
                 throw new Error(
-                    `Operador inesperado: "${tokens[posicao]}".`
+                    `O operador "${operador}" precisa de conjuntos.`
                 );
+            }
+
+            return valor.valor;
+        }
+
+        function booleano(valor) {
+            return { tipo: "booleano", valor };
+        }
+
+        // Etapa 2: ler um elemento, conjunto ou expressão entre parênteses.
+        function lerPrimario() {
+            const token = tokens[posicao];
+
+            if (token === undefined) {
+                throw new Error("Era esperado um conjunto ou uma expressão.");
+            }
+
+            if (token === "∅") {
+                posicao++;
+                return { tipo: "conjunto", valor: [] };
+            }
+
+            if (token === "(") {
+                posicao++;
+
+                const resultado = lerDisjuncao();
+
+                if (tokens[posicao] !== ")") {
+                    throw new Error("Está faltando um parêntese de fechamento ')'.");
+                }
+
+                posicao++;
+                return resultado;
+            }
+
+            if (/^[A-Za-z][A-Za-z0-9_]*$/.test(token)) {
+                posicao++;
+
+                const nome = token.toUpperCase();
+
+                if (Object.hasOwn(conjuntoElementosDicionario, nome)) {
+                    return {
+                        tipo: "conjunto",
+                        valor: [...conjuntoElementosDicionario[nome]]
+                    };
+                }
+
+                // Identificadores desconhecidos podem ser elementos
+                // em expressões como a ∈ VOGAL.
+                return { tipo: "elemento", valor: token };
+            }
+
+            if (/^\d+(?:\.\d+)?$/.test(token)) {
+                posicao++;
+                return { tipo: "elemento", valor: token };
+            }
+
+            throw new Error(`Expressão inesperada: "${token}".`);
+        }
+
+        // Etapa 3: união, interseção e diferença.
+        function lerExpressaoConjunto() {
+            let resultado = lerPrimario();
+
+            while (operadoresConjunto.includes(tokens[posicao])) {
+                const operador = tokens[posicao++];
+
+                const A = exigirConjunto(resultado, operador);
+                const B = exigirConjunto(lerPrimario(), operador);
+
+                if (operador === "∩") {
+                    resultado = {
+                        tipo: "conjunto",
+                        valor: A.filter(elemento => B.includes(elemento))
+                    };
+                } else if (operador === "−") {
+                    resultado = {
+                        tipo: "conjunto",
+                        valor: A.filter(elemento => !B.includes(elemento))
+                    };
+                } else {
+                    resultado = {
+                        tipo: "conjunto",
+                        valor: [...new Set([...A, ...B])]
+                    };
+                }
             }
 
             return resultado;
         }
 
-        // Etapa 4: resolver a expressão ou a comparação.
-        const comparacao = separarComparacao(tokens);
+        // Etapa 4: comparações entre conjuntos e pertinência.
+        function lerComparacao() {
+            const esquerda = lerExpressaoConjunto();
+            const operador = tokens[posicao];
 
-        if (comparacao === null) {
-            const resultado = avaliarConjunto(tokens);
-
-            resultElement.textContent = `{${resultado.join(", ")}}`;
-            return;
-        }
-
-        const { esquerda, operador, direita } = comparacao;
-        let resultado;
-
-        if (operador === "∈" || operador === "∉") {
-            // O lado esquerdo é um elemento, não um conjunto.
-            if (esquerda.length !== 1 || ["(", ")", "∅"].includes(esquerda[0])) {
-                throw new Error(
-                    "À esquerda de ∈ ou ∉, informe um único elemento."
-                );
+            if (!operadoresComparacao.includes(operador)) {
+                return esquerda;
             }
 
-            const elemento = esquerda[0];
-            const conjunto = avaliarConjunto(direita);
-            const pertence = conjunto.includes(elemento);
+            posicao++;
 
-            resultado = operador === "∈" ? pertence : !pertence;
-        } else {
-            // As comparações restantes recebem dois conjuntos.
-            const A = avaliarConjunto(esquerda);
-            const B = avaliarConjunto(direita);
+            const direita = lerExpressaoConjunto();
+            let resultado;
 
-            const conjuntoA = new Set(A);
-            const conjuntoB = new Set(B);
+            if (operador === "∈" || operador === "∉") {
+                const elemento = esquerda.tipo === "elemento"
+                    ? esquerda.valor
+                    : null;
 
-            const iguais =
-                conjuntoA.size === conjuntoB.size &&
-                [...conjuntoA].every(elemento => conjuntoB.has(elemento));
+                const conjunto = exigirConjunto(direita, operador);
 
-            switch (operador) {
-                case "=":
-                    resultado = iguais;
-                    break;
-
-                case "≠":
-                    resultado = !iguais;
-                    break;
-
-                case "⊆":
-                    resultado = [...conjuntoA].every(
-                        elemento => conjuntoB.has(elemento)
+                if (elemento === null) {
+                    throw new Error(
+                        `À esquerda de ${operador}, informe um único elemento.`
                     );
-                    break;
+                }
 
-                case "⊂":
-                    resultado =
-                        [...conjuntoA].every(
-                            elemento => conjuntoB.has(elemento)
-                        ) && !iguais;
-                    break;
+                const pertence = conjunto.includes(elemento);
+
+                resultado = operador === "∈" ? pertence : !pertence;
+            } else {
+                const A = new Set(exigirConjunto(esquerda, operador));
+                const B = new Set(exigirConjunto(direita, operador));
+
+                const iguais =
+                    A.size === B.size &&
+                    [...A].every(elemento => B.has(elemento));
+
+                switch (operador) {
+                    case "=":
+                        resultado = iguais;
+                        break;
+
+                    case "≠":
+                        resultado = !iguais;
+                        break;
+
+                    case "⊆":
+                        resultado = [...A].every(elemento => B.has(elemento));
+                        break;
+
+                    case "⊂":
+                        resultado =
+                            [...A].every(elemento => B.has(elemento)) &&
+                            !iguais;
+                        break;
+                }
             }
+
+            return booleano(resultado);
         }
 
-        resultElement.textContent =
-            `${esquerda.join(" ")} ${operador} ${direita.join(" ")}: ` +
-            (resultado ? "Verdadeiro" : "Falso");
+        // Etapa 5: negação.
+        function lerNegacao() {
+            if (tokens[posicao] === "¬") {
+                posicao++;
+
+                const resultado = lerNegacao();
+
+                return booleano(!exigirBooleano(resultado, "¬"));
+            }
+
+            return lerComparacao();
+        }
+
+        // Etapa 6: conjunção (E).
+        function lerConjuncao() {
+            let resultado = lerNegacao();
+
+            while (tokens[posicao] === "∧") {
+                posicao++;
+
+                const A = exigirBooleano(resultado, "∧");
+                const B = exigirBooleano(lerNegacao(), "∧");
+
+                resultado = booleano(A && B);
+            }
+
+            return resultado;
+        }
+
+        // Etapa 7: disjunção (OU).
+        function lerDisjuncao() {
+            let resultado = lerConjuncao();
+
+            while (tokens[posicao] === "∨") {
+                posicao++;
+
+                const A = exigirBooleano(resultado, "∨");
+                const B = exigirBooleano(lerConjuncao(), "∨");
+
+                resultado = booleano(A || B);
+            }
+
+            return resultado;
+        }
+
+        // Etapa 8: executar a fórmula.
+        const resultado = lerDisjuncao();
+
+        if (posicao < tokens.length) {
+            throw new Error(
+                `Operador ou símbolo inesperado: "${tokens[posicao]}".`
+            );
+        }
+
+        if (resultado.tipo === "conjunto") {
+            resultElement.textContent =
+                `{${resultado.valor.join(", ")}}`;
+        } else if (resultado.tipo === "booleano") {
+            resultElement.textContent =
+                resultado.valor ? "Verdadeiro" : "Falso";
+        } else {
+            throw new Error(
+                "Informe uma operação de conjunto ou uma proposição lógica."
+            );
+        }
 
     } catch (erro) {
         resultElement.textContent = `Erro: ${erro.message}`;
     }
 }
-
