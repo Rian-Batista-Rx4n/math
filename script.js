@@ -101,7 +101,6 @@ formulaInput.addEventListener("input", formulaSolver);
 
 // Função para resolver a fórmula inserida no input
 // Função criada com ajuda de Inteligência Artificial (IA) para auxiliar na lógica de resolução de fórmulas matemáticas envolvendo conjuntos.
-
 function formulaSolver() {
     const formula = formulaInput.value.trim();
     resultElement.replaceChildren();
@@ -113,7 +112,7 @@ function formulaSolver() {
         function tokenizar(expressao) {
             const tokens = [];
             const regex =
-                /\s*([A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?|∅|[()∪∩−⊆⊂∈∉=≠¬∧∨])/y;
+                /\s*([A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?|∅|>=|<=|[()∪∩−⊆⊂∈∉=≠¬∧∨∀∃:<>])/y;
 
             let posicao = 0;
 
@@ -137,7 +136,12 @@ function formulaSolver() {
         const tokens = tokenizar(formula);
         let posicao = 0;
 
-        const operadoresComparacao = ["⊆", "⊂", "∈", "∉", "=", "≠"];
+        const ambienteVariaveis = new Map();
+
+        const operadoresComparacao = [
+            "⊆", "⊂", "∈", "∉", "=", "≠",
+            ">", ">=", "<", "<="
+        ];
         const operadoresConjunto = ["∪", "∩", "−"];
 
         function exigirBooleano(valor, operador) {
@@ -164,12 +168,110 @@ function formulaSolver() {
             return { tipo: "booleano", valor };
         }
 
+        function lerQuantificador() {
+            const quantificador = tokens[posicao++];
+
+            // Ler a variável, como x.
+            const variavel = tokens[posicao];
+
+            if (!variavel || !/^[A-Za-z][A-Za-z0-9_]*$/.test(variavel)) {
+                throw new Error("Informe uma variável após o quantificador.");
+            }
+
+            posicao++;
+
+            // Exigir o símbolo de pertinência.
+            if (tokens[posicao++] !== "∈") {
+                throw new Error('Era esperado o símbolo "∈".');
+            }
+
+            // Ler o nome do conjunto.
+            const nomeConjunto = tokens[posicao++];
+
+            if (
+                !nomeConjunto ||
+                !Object.hasOwn(conjuntoElementosDicionario, nomeConjunto.toUpperCase())
+            ) {
+                throw new Error("O quantificador precisa de um conjunto válido.");
+            }
+
+            const elementos =
+                [...conjuntoElementosDicionario[nomeConjunto.toUpperCase()]];
+
+            // Exigir os dois-pontos.
+            if (tokens[posicao++] !== ":") {
+                throw new Error('Era esperado ":" antes da condição.');
+            }
+
+            const inicioCondicao = posicao;
+            let fimCondicao;
+
+            const existe = quantificador === "∃";
+            let resultado = !existe;
+
+            const tinhaVariavel = ambienteVariaveis.has(variavel);
+            const valorAnterior = ambienteVariaveis.get(variavel);
+
+            try {
+                // Mesmo um conjunto vazio precisa ter sua condição analisada
+                // para que o parser saiba onde a expressão termina.
+                const quantidadeTestes = Math.max(elementos.length, 1);
+
+                for (let i = 0; i < quantidadeTestes; i++) {
+                    posicao = inicioCondicao;
+
+                    ambienteVariaveis.set(
+                        variavel,
+                        elementos.length ? String(elementos[i]) : "0"
+                    );
+
+                    const condicao = lerDisjuncao();
+                    const valor = exigirBooleano(condicao, quantificador);
+
+                    if (fimCondicao === undefined) {
+                        fimCondicao = posicao;
+                    } else if (posicao !== fimCondicao) {
+                        throw new Error("A condição do quantificador está inconsistente.");
+                    }
+
+                    if (elementos.length > 0) {
+                        if (existe) {
+                            resultado = resultado || valor;
+                        } else {
+                            resultado = resultado && valor;
+                        }
+                    }
+                }
+
+                // ∀ sobre conjunto vazio é verdadeiro.
+                // ∃ sobre conjunto vazio é falso.
+                if (elementos.length === 0) {
+                    resultado = !existe;
+                }
+
+                posicao = fimCondicao;
+
+                return booleano(resultado);
+            } finally {
+                // Restaurar o valor anterior da variável, se existia.
+                if (tinhaVariavel) {
+                    ambienteVariaveis.set(variavel, valorAnterior);
+                } else {
+                    ambienteVariaveis.delete(variavel);
+                }
+            }
+        }
+
         // Etapa 2: ler um elemento, conjunto ou expressão entre parênteses.
         function lerPrimario() {
             const token = tokens[posicao];
 
             if (token === undefined) {
                 throw new Error("Era esperado um conjunto ou uma expressão.");
+            }
+
+            if (token === "∀" || token === "∃") {
+                return lerQuantificador();
             }
 
             if (token === "∅") {
@@ -192,6 +294,13 @@ function formulaSolver() {
 
             if (/^[A-Za-z][A-Za-z0-9_]*$/.test(token)) {
                 posicao++;
+
+                if (ambienteVariaveis.has(token)) {
+                    return {
+                        tipo: "elemento",
+                        valor: ambienteVariaveis.get(token)
+                    };
+                }
 
                 const nome = token.toUpperCase();
 
@@ -258,6 +367,46 @@ function formulaSolver() {
             posicao++;
 
             const direita = lerExpressaoConjunto();
+            let result;
+            if ([">", ">=", "<", "<="].includes(operador)) {
+                if (
+                    esquerda.tipo !== "elemento" ||
+                    direita.tipo !== "elemento"
+                ) {
+                    throw new Error(
+                        "Comparações numéricas precisam de dois valores numéricos."
+                    );
+                }
+
+                const A = Number(esquerda.valor);
+                const B = Number(direita.valor);
+
+                if (!Number.isFinite(A) || !Number.isFinite(B)) {
+                    throw new Error(
+                        "Comparações numéricas precisam de valores numéricos válidos."
+                    );
+                }
+
+                switch (operador) {
+                    case ">":
+                        result = A > B;
+                        break;
+
+                    case ">=":
+                        result = A >= B;
+                        break;
+
+                    case "<":
+                        result = A < B;
+                        break;
+
+                    case "<=":
+                        result = A <= B;
+                        break;
+                }
+
+                return booleano(result);
+            }
             let resultado;
 
             if (operador === "∈" || operador === "∉") {
