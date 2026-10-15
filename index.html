@@ -11,8 +11,8 @@
 
 <body>
     <div id="modal-novo-conjunto" class="modal-novo-conjunto">
-        <input class="novo-conjunto-input" type="text" placeholder="Nome do Conjunto">
-        <input class="novo-conjunto-input" type="text" placeholder="Elementos"><br>
+        <input id="novo-conjunto-nome" class="novo-conjunto-input" type="text" placeholder="Nome do Conjunto">
+        <input id="novo-conjunto-elementos" class="novo-conjunto-input" type="text" placeholder="Elementos separados por vírgula">
         <button class="modal-novo-conjunto-btn" onclick="createNewSet()">Criar Conjunto</button>
     </div>
     
@@ -31,7 +31,9 @@
             <div class="formula">
                 <input id="formula-input" class="formula-input" type="text" placeholder="Digite a fórmula Ex. A∪B">
             </div>
-            <div class="result"></div>
+            
+            <div class="result" id="result" aria-live="polite" aria-label="Resultado da expressão"></div>
+
             <div class="keyboard">
                 <div class="keyboard-key" id="keyboard-key-0" onclick="insertSymbol('∪')">∪</div>
                 <div class="keyboard-key" id="keyboard-key-1" onclick="insertSymbol('∩')">∩</div>
@@ -41,11 +43,13 @@
                 <div class="keyboard-key" id="keyboard-key-5" onclick="insertSymbol('∈')">∈</div>
                 <div class="keyboard-key" id="keyboard-key-6" onclick="insertSymbol('∉')">∉</div>
                 <div class="keyboard-key" id="keyboard-key-7" onclick="insertSymbol('∅')">∅</div>
-                <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('¬')">¬</div>
+                <div class="keyboard-key" id="keyboard-key-8" onclick="insertSymbol('¬')">¬</div>
                 <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('^')">^</div>
-                <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('∨')">∨</div>
-                <div class="keyboard-key" id="keyboard-key-8" onclick="insertSymbol('=')">=</div>
-                <div class="keyboard-key" id="keyboard-key-9" onclick="insertSymbol('≠')">≠</div>
+                <div class="keyboard-key" id="keyboard-key-10" onclick="insertSymbol('∨')">∨</div>
+                <div class="keyboard-key" id="keyboard-key-11" onclick="insertSymbol('∀')">∀</div>
+                <div class="keyboard-key" id="keyboard-key-12" onclick="insertSymbol('∃')">∃</div>
+                <div class="keyboard-key" id="keyboard-key-13" onclick="insertSymbol('=')">=</div>
+                <div class="keyboard-key" id="keyboard-key-14" onclick="insertSymbol('≠')">≠</div>
             </div>
         </section>
 
@@ -55,7 +59,7 @@
     </main>
 
     <footer>
-        <p>Developer: Rx4n | Math: v0.0.1 | ©2026</p>
+        <p>Developer: Rx4n | Math: v0.1.0 | ©2026</p>
     </footer>
 
     <script src="script.js"></script>
