@@ -101,126 +101,248 @@ formulaInput.addEventListener("input", formulaSolver);
 
 // Função para resolver a fórmula inserida no input
 // Função criada com ajuda de Inteligência Artificial (IA) para auxiliar na lógica de resolução de fórmulas matemáticas envolvendo conjuntos.
+
 function formulaSolver() {
     const formula = formulaInput.value.trim();
-
     resultElement.replaceChildren();
 
-    // Não mostra resultado enquanto o campo estiver vazio.
-    if (!formula) {
-        return;
-    }
-
-    // Verifica se um nome corresponde a um conjunto existente.
-    function obterConjunto(nome) {
-        const identificador = nome.trim().toUpperCase();
-
-        if (!Object.hasOwn(conjuntoElementosDicionario, identificador)) {
-            throw new Error(`O conjunto "${identificador}" não existe.`);
-        }
-
-        return conjuntoElementosDicionario[identificador];
-    }
-
-    // Verifica se dois conjuntos possuem os mesmos elementos.
-    function conjuntosIguais(a, b) {
-        return a.length === b.length &&
-            a.every(elemento => b.includes(elemento));
-    }
-
-    // Remove elementos repetidos, preservando a ordem.
-    function removerDuplicados(elementos) {
-        return [...new Set(elementos)];
-    }
-
-    // Procura uma operação binária na fórmula.
-    const operacaoRegex =
-        /^(.+?)\s*(∪|∩|−|-|⊆|⊂|∈|∉|=|≠|\bU\b)\s*(.+)$/i;
-
-    const correspondencia = formula.match(operacaoRegex);
+    if (!formula) return;
 
     try {
-        // Caso 1: a fórmula contém apenas o nome de um conjunto.
-        if (!correspondencia) {
-            const conjunto = obterConjunto(formula);
+        // Etapa 1: separar a fórmula em tokens.
+        function tokenizar(expressao) {
+            const tokens = [];
+            const regex =
+                /\s*([A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?|∅|[()∪∩−⊆⊂∈∉=≠])/y;
 
-            resultElement.textContent =
-                `${formula.toUpperCase()} = {${conjunto.join(", ")}}`;
+            let posicao = 0;
 
+            while (posicao < expressao.length) {
+                regex.lastIndex = posicao;
+                const correspondencia = regex.exec(expressao);
+
+                if (!correspondencia) {
+                    throw new Error(
+                        `Símbolo inválido na posição ${posicao + 1}: "${expressao[posicao]}".`
+                    );
+                }
+
+                tokens.push(correspondencia[1]);
+                posicao = regex.lastIndex;
+            }
+
+            return tokens;
+        }
+
+        const tokens = tokenizar(formula);
+
+        // Etapa 2: procurar um operador de comparação fora dos parênteses.
+        function separarComparacao(tokens) {
+            let profundidade = 0;
+            let comparacao = null;
+
+            const operadores = ["⊆", "⊂", "∈", "∉", "=", "≠"];
+
+            for (let i = 0; i < tokens.length; i++) {
+                if (tokens[i] === "(") profundidade++;
+                if (tokens[i] === ")") profundidade--;
+
+                if (profundidade < 0) {
+                    throw new Error("Parêntese de fechamento sem abertura.");
+                }
+
+                if (profundidade === 0 && operadores.includes(tokens[i])) {
+                    if (comparacao !== null) {
+                        throw new Error(
+                            "Use apenas uma comparação por fórmula nesta versão."
+                        );
+                    }
+
+                    comparacao = i;
+                }
+            }
+
+            if (profundidade !== 0) {
+                throw new Error("Os parênteses não estão fechados corretamente.");
+            }
+
+            if (comparacao === null) {
+                return null;
+            }
+
+            const esquerda = tokens.slice(0, comparacao);
+            const operador = tokens[comparacao];
+            const direita = tokens.slice(comparacao + 1);
+
+            if (!esquerda.length || !direita.length) {
+                throw new Error("A comparação precisa ter os dois operandos.");
+            }
+
+            return { esquerda, operador, direita };
+        }
+
+        // Etapa 3: analisar e calcular expressões de conjuntos.
+        function avaliarConjunto(tokens) {
+            let posicao = 0;
+
+            function lerPrimario() {
+                const token = tokens[posicao];
+
+                if (token === undefined) {
+                    throw new Error("Era esperado um conjunto.");
+                }
+
+                if (token === "∅") {
+                    posicao++;
+                    return [];
+                }
+
+                if (token === "(") {
+                    posicao++;
+
+                    const resultado = lerUniao();
+
+                    if (tokens[posicao] !== ")") {
+                        throw new Error("Está faltando um ')'.");
+                    }
+
+                    posicao++;
+                    return resultado;
+                }
+
+                if (/^[A-Za-z][A-Za-z0-9_]*$/.test(token)) {
+                    posicao++;
+
+                    const nome = token.toUpperCase();
+
+                    if (!Object.hasOwn(conjuntoElementosDicionario, nome)) {
+                        throw new Error(`O conjunto "${nome}" não existe.`);
+                    }
+
+                    return [...conjuntoElementosDicionario[nome]];
+                }
+
+                throw new Error(`Expressão inesperada: "${token}".`);
+            }
+
+            function lerIntersecao() {
+                let resultado = lerPrimario();
+
+                while (tokens[posicao] === "∩") {
+                    posicao++;
+
+                    const direita = lerPrimario();
+
+                    resultado = resultado.filter(
+                        elemento => direita.includes(elemento)
+                    );
+                }
+
+                return resultado;
+            }
+
+            function lerUniao() {
+                let resultado = lerIntersecao();
+
+                while (
+                    tokens[posicao] === "∪" ||
+                    tokens[posicao] === "−"
+                ) {
+                    const operador = tokens[posicao++];
+
+                    const direita = lerIntersecao();
+
+                    if (operador === "∪") {
+                        resultado = [...new Set([...resultado, ...direita])];
+                    } else {
+                        resultado = resultado.filter(
+                            elemento => !direita.includes(elemento)
+                        );
+                    }
+                }
+
+                return resultado;
+            }
+
+            const resultado = lerUniao();
+
+            if (posicao < tokens.length) {
+                throw new Error(
+                    `Operador inesperado: "${tokens[posicao]}".`
+                );
+            }
+
+            return resultado;
+        }
+
+        // Etapa 4: resolver a expressão ou a comparação.
+        const comparacao = separarComparacao(tokens);
+
+        if (comparacao === null) {
+            const resultado = avaliarConjunto(tokens);
+
+            resultElement.textContent = `{${resultado.join(", ")}}`;
             return;
         }
 
-        const esquerda = correspondencia[1].trim();
-        const operador = correspondencia[2].toUpperCase();
-        const direita = correspondencia[3].trim();
+        const { esquerda, operador, direita } = comparacao;
+        let resultado;
 
-        // Caso 2: operações entre conjuntos.
-        if (["∪", "U", "∩", "−", "-", "=", "≠", "⊆", "⊂"].includes(operador)) {
-            const A = obterConjunto(esquerda);
-            const B = obterConjunto(direita);
+        if (operador === "∈" || operador === "∉") {
+            // O lado esquerdo é um elemento, não um conjunto.
+            if (esquerda.length !== 1 || ["(", ")", "∅"].includes(esquerda[0])) {
+                throw new Error(
+                    "À esquerda de ∈ ou ∉, informe um único elemento."
+                );
+            }
 
-            let resultado;
+            const elemento = esquerda[0];
+            const conjunto = avaliarConjunto(direita);
+            const pertence = conjunto.includes(elemento);
+
+            resultado = operador === "∈" ? pertence : !pertence;
+        } else {
+            // As comparações restantes recebem dois conjuntos.
+            const A = avaliarConjunto(esquerda);
+            const B = avaliarConjunto(direita);
+
+            const conjuntoA = new Set(A);
+            const conjuntoB = new Set(B);
+
+            const iguais =
+                conjuntoA.size === conjuntoB.size &&
+                [...conjuntoA].every(elemento => conjuntoB.has(elemento));
 
             switch (operador) {
-                case "∪":
-                case "U":
-                    resultado = removerDuplicados([...A, ...B]);
-                    break;
-
-                case "∩":
-                    resultado = A.filter(elemento => B.includes(elemento));
-                    break;
-
-                case "−":
-                case "-":
-                    resultado = A.filter(elemento => !B.includes(elemento));
-                    break;
-
                 case "=":
-                    resultado = conjuntosIguais(A, B);
+                    resultado = iguais;
                     break;
 
                 case "≠":
-                    resultado = !conjuntosIguais(A, B);
+                    resultado = !iguais;
                     break;
 
                 case "⊆":
-                    resultado = A.every(elemento => B.includes(elemento));
+                    resultado = [...conjuntoA].every(
+                        elemento => conjuntoB.has(elemento)
+                    );
                     break;
 
                 case "⊂":
                     resultado =
-                        A.every(elemento => B.includes(elemento)) &&
-                        !conjuntosIguais(A, B);
+                        [...conjuntoA].every(
+                            elemento => conjuntoB.has(elemento)
+                        ) && !iguais;
                     break;
             }
-
-            if (typeof resultado === "boolean") {
-                resultElement.textContent =
-                    `${esquerda} ${operador} ${direita}: ${resultado ? "Verdadeiro" : "Falso"}`;
-            } else {
-                resultElement.textContent =
-                    `{${resultado.join(", ")}}`;
-            }
-
-            return;
         }
 
-        // Caso 3: verificar pertinência de um elemento.
-        if (operador === "∈" || operador === "∉") {
-            const conjunto = obterConjunto(direita);
-            const pertence = conjunto.includes(esquerda);
-            const resultado = operador === "∈" ? pertence : !pertence;
-
-            resultElement.textContent =
-                `${esquerda} ${operador} ${direita}: ${resultado ? "Verdadeiro" : "Falso"}`;
-
-            return;
-        }
-
-        throw new Error("Operação ainda não implementada.");
+        resultElement.textContent =
+            `${esquerda.join(" ")} ${operador} ${direita.join(" ")}: ` +
+            (resultado ? "Verdadeiro" : "Falso");
 
     } catch (erro) {
         resultElement.textContent = `Erro: ${erro.message}`;
     }
 }
+
